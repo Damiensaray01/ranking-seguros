@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ranking de Asesores - Seguros Horizonte</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen py-10 px-4">
+    <div class="max-w-5xl mx-auto">
+        <header class="text-center mb-10">
+            <span class="bg-blue-600/20 text-blue-400 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider">Campaña Activa</span>
+            <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight text-white mt-3">SEGUROS HORIZONTE</h1>
+            <p class="text-slate-400 text-sm mt-1">Ranking de Productividad y Conversión de Asesores</p>
+        </header>
+
+        <!-- Tarjeta del Ranking -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-800/80 text-slate-400 text-xs uppercase tracking-wider border-b border-slate-800">
+                            <th class="py-4 px-6 text-center w-16">Pos</th>
+                            <th class="py-4 px-6">Asesor</th>
+                            <th class="py-4 px-6 text-center">Llamadas</th>
+                            <th class="py-4 px-6 text-center">Contactos Efectivos</th>
+                            <th class="py-4 px-6 text-center">Ventas</th>
+                            <th class="py-4 px-6 text-right">Puntaje Global</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-cuerpo" class="divide-y divide-slate-800/60 text-sm">
+                        <!-- Carga dinámica -->
+                        <tr>
+                            <td colspan="6" class="py-8 text-center text-slate-500 animate-pulse">Sincronizando datos con Google Sheets...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <footer class="text-center mt-6 text-xs text-slate-600">
+            Actualización automática en tiempo real cada 60 segundos.
+        </footer>
+    </div>
+
+    <script>
+        async function cargarRanking() {
+            try {
+                const response = await fetch('/api/ranking');
+                const data = await response.json();
+                const tbody = document.getElementById('tabla-cuerpo');
+                tbody.innerHTML = '';
+
+                data.forEach((item, index) => {
+                    let badgeStyle = "text-slate-400 font-semibold";
+                    let rowHighlight = "hover:bg-slate-800/40";
+                    
+                    if (index === 0) {
+                        badgeStyle = "bg-yellow-500/20 text-yellow-400 font-bold border border-yellow-500/30 rounded-lg px-2 py-1";
+                        rowHighlight = "bg-yellow-500/5 hover:bg-yellow-500/10";
+                    } else if (index === 1) {
+                        badgeStyle = "bg-slate-300/20 text-slate-200 font-bold border border-slate-400/30 rounded-lg px-2 py-1";
+                    } else if (index === 2) {
+                        badgeStyle = "bg-amber-600/20 text-amber-500 font-bold border border-amber-600/30 rounded-lg px-2 py-1";
+                    }
+
+                    const tr = document.createElement('tr');
+                    tr.className = `transition ${rowHighlight}`;
+                    
+                    tr.innerHTML = `
+                        <td class="py-4 px-6 text-center"><span class="${badgeStyle}">#${index + 1}</span></td>
+                        <td class="py-4 px-6 font-medium text-white">${item.nombre}</td>
+                        <td class="py-4 px-6 text-center text-slate-300">${item.llamadas}</td>
+                        <td class="py-4 px-6 text-center text-blue-400 font-semibold">${item.contactosEfectivos}</td>
+                        <td class="py-4 px-6 text-center text-emerald-400 font-semibold">${item.ventas}</td>
+                        <td class="py-4 px-6 text-right font-bold text-amber-400 text-base">${item.puntaje} pts</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (error) {
+                console.error("Error al cargar datos:", error);
+            }
+        }
+
+        cargarRanking();
+        setInterval(cargarRanking, 60000); // Se actualiza cada 1 minuto
+    </script>
+</body>
+</html>
