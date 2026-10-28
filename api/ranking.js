@@ -11,8 +11,8 @@ const URL_LLAMADAS = 'https://docs.google.com/spreadsheets/d/1SRj764C3n8bk7zZH8x
 const URL_VENTAS = 'https://docs.google.com/spreadsheets/d/1PcmRLaA3jh0JoZWbiZtAtw_7wLj4IYFyxDHoCoTzZQA/export?format=csv&gid=1205148090';
 
 const asesoresLista = [
-  "Berenice Troconiz", "Alejandra Mujica", "Roikel Suniaga", "Kariosqui Gomez", "Carolina Rojas", "Danielis Villegas",
-  "Kismar Hernandez", "Luisiana Nacero", "Ivana Saravia", "Angi Torres", "Andres Martinez", "Cindy Suarez", "Laura Caraballo"
+  "Roikel Suniaga", "Kariosqui Gomez", "Carolina Rojas", "Danielis Villegas",
+  "Kismar Hernandez", "Luisiana Nacero", "Angi Torres", "Cindy Suarez",
 ];
 
 const mesesNombres = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
@@ -120,7 +120,10 @@ app.get('/api/ranking', async (req, res) => {
 
         if (mesDetectadoVentas !== mesFiltro) return;
 
-        // Exclusión estricta de renovaciones
+        const parentesco = (row['Parentesco'] || '').toString().trim();
+        if (parentesco !== 'Titular Masculino' && parentesco !== 'Titular Femenino') return;
+
+        // Exclusión de renovaciones
         const filaTexto = JSON.stringify(row).toLowerCase();
         const esRenovacion = /\breno\b|renov/i.test(filaTexto);
         if (esRenovacion) return;
@@ -131,7 +134,7 @@ app.get('/api/ranking', async (req, res) => {
           metricas[nombreAsesor].ventasTotales += 1;
           totalVentasGeneradasGlobal += 1;
 
-          // Búsqueda en Columna AE ("status de cobro" / Índice 30)
+          // Columna AE ("status de cobro")
           let valorStatusCobro = '';
           for (let i = 0; i < keysVentas.length; i++) {
             const kClean = keysVentas[i].toLowerCase().trim();
@@ -153,7 +156,7 @@ app.get('/api/ranking', async (req, res) => {
       });
     }
 
-    // 3. Generar ranking ordenado PRINCIPALMENTE POR VENTAS COBRADAS
+    // 3. Generar ranking ordenado por Ventas Cobradas
     const rankingFinal = Object.values(metricas).sort((a, b) => {
       if (b.ventasCobradas !== a.ventasCobradas) {
         return b.ventasCobradas - a.ventasCobradas;
