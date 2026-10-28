@@ -10,11 +10,6 @@ app.use(cors());
 const URL_LLAMADAS = 'https://docs.google.com/spreadsheets/d/1SRj764C3n8bk7zZH8x_HPTK-Y4AM828vKNX4TIhP3F0/export?format=csv&gid=1563288647';
 const URL_VENTAS = 'https://docs.google.com/spreadsheets/d/1PcmRLaA3jh0JoZWbiZtAtw_7wLj4IYFyxDHoCoTzZQA/export?format=csv&gid=1205148090';
 
-// Lista completa alineada con los asesores activos de la tabla dinámica
-const asesoresLista = [
-"Roikel Suniaga", "Kariosqui Gomez","Carolina Rojas", "Danielis Villegas", "Kismar Hernandez", "Luisiana Nacero","Angi Torres","Cindy Suarez"
-];
-
 const mesesNombres = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 
 async function leerCSVdesdeURL(url) {
@@ -72,17 +67,41 @@ app.get('/api/ranking', async (req, res) => {
     ]);
 
     const metricas = {};
-    asesoresLista.forEach(nombre => {
-      metricas[nombre] = {
-        nombre: nombre,
-        llamadas: 0,
-        contactosEfectivos: 0,
-        ventasTotales: 0,
-        ventasCobradas: 0
-      };
-    });
 
-    // 1. Procesar llamadas
+    // Función auxiliar para registrar o actualizar asesores limpiando nombres no válidos
+    const registrarAsesor = (nombreCrudo) => {
+      if (!nombreCrudo) return null;
+      let nombre = String(nombreCrudo).trim();
+      
+      // Filtrar nombres genéricos, sistemas o duplicados extraños
+      const lower = nombre.toLowerCase();
+      if (
+        !nombre || 
+        lower.includes('outbound') || 
+        lower.includes('auto dial') || 
+        lower.length < 3
+      ) {
+        return null;
+      }
+
+      // Normalizar mayúsculas/minúsculas de nombres propios (ej. "kariosqui gomez" -> "Kariosqui Gomez")
+      nombre = nombre.split(' ')
+        .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+        .join(' ');
+
+      if (!metricas[nombre]) {
+        metricas[nombre] = {
+          nombre: nombre,
+          llamadas: 0,
+          contactosEfectivos: 0,
+          ventasTotales: 0,
+          ventasCobradas: 0
+        };
+      }
+      return nombre;
+    };
+
+    // 1. Procesar llamadas (registra dinámicamente a quienes tengan llamadas en el mes)
     if (Array.isArray(datosLlamadas)) {
       datosLlamadas.forEach(row => {
         if (!row) return;
@@ -94,17 +113,14 @@ app.get('/api/ranking', async (req, res) => {
 
         if (mesDetectado !== mesFiltro) return;
 
-        const nombre = (row['full_name'] || row['Full Name'] || row['Asesor'] || row['Nombre'] || '')?.trim();
-        
-        // Si el asesor viene en el CSV pero no está en la lista estática, lo inicializamos dinámicamente
-        if (nombre) {
-          if (!metricas[nombre]) {
-            metricas[nombre] = { nombre: nombre, llamadas: 0, contactosEfectivos: 0, ventasTotales: 0, ventasCobradas: 0 };
-          }
-          metricas[nombre].llamadas += Number(row['Registro Unico'] || row['Registro Único'] || 1);
+        const nombreCrudo = row['full_name'] || row['Full Name'] || row['Asesor'] || row['Nombre'] || '';
+        const nombreValido = registrarAsesor(nombreCrudo);
+
+        if (nombreValido) {
+          metricas[nombreValido].llamadas += Number(row['Registro Unico'] || row['Registro Único'] || 1);
           const tipoContacto = (row['Tipo de Contacto'] || row['Contacto'] || '').toString().trim().toLowerCase();
           if (tipoContacto === 'efectivo') {
-            metricas[nombre].contactosEfectivos += 1;
+            metricas[nombreValido].contactosEfectivos += 1;
           }
         }
       });
@@ -130,15 +146,11 @@ app.get('/api/ranking', async (req, res) => {
         const esRenovacion = /\breno\b|renov/i.test(filaTexto);
         if (esRenovacion) return;
 
-        const nombreAsesor = (row['Asesor'] || row['Nombre del Asesor'] || (keysVentas[22] ? row[keysVentas[22]] : ''))?.trim();
+        const nombreCrudo = row['Asesor'] || row['Nombre del Asesor'] || (keysVentas[22] ? row[keysVentas[22]] : '');
+        const nombreValido = registrarAsesor(nombreCrudo);
 
-        if (nombreAsesor) {
-          // Inicializar dinámicamente si el asesor registra ventas pero no estaba listado arriba
-          if (!metricas[nombreAsesor]) {
-            metricas[nombreAsesor] = { nombre: nombreAsesor, llamadas: 0, contactosEfectivos: 0, ventasTotales: 0, ventasCobradas: 0 };
-          }
-
-          metricas[nombreAsesor].ventasTotales += 1;
+        if (nombreValido) {
+          metricas[nombreValido].ventasTotales += 1;
           totalVentasGeneradasGlobal += 1;
 
           // Búsqueda en Columna AE ("status de cobro" / Índice 30)
@@ -156,15 +168,18 @@ app.get('/api/ranking', async (req, res) => {
                               !valorStatusCobro.includes('no');
 
           if (estaCobrada) {
-            metricas[nombreAsesor].ventasCobradas += 1;
+            metricas[nombreValido].ventasCobradas += 1;
             totalVentasCobradasGlobal += 1;
           }
         }
       });
     }
 
-    // 3. Generar ranking ordenado PRINCIPALMENTE POR VENTAS COBRADAS
-    const rankingFinal = Object.values(metricas).sort((a, b) => {
+    // 3. Filtrar y dejar únicamente a los asesores que tengan al menos 1 llamada o 1 venta
+    const asesoresActivos = Object.values(metricas).filter(a => a.llamadas > 0 || a.ventasTotales > 0);
+
+    // 4. Generar ranking ordenado PRINCIPALMENTE POR VENTAS COBRADAS
+    const rankingFinal = asesoresActivos.sort((a, b) => {
       if (b.ventasCobradas !== a.ventasCobradas) {
         return b.ventasCobradas - a.ventasCobradas;
       }
