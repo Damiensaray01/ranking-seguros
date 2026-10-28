@@ -12,10 +12,7 @@ const URL_VENTAS = 'https://docs.google.com/spreadsheets/d/1PcmRLaA3jh0JoZWbiZtA
 
 // Lista completa alineada con los asesores activos de la tabla dinámica
 const asesoresLista = [
-  "Berenice Troconiz", "Alejandra Mujica", "Roikel Suniaga", "Kariosqui Gomez", 
-  "Carolina Rojas", "Danielis Villegas", "Kismar Hernandez", "Luisiana Nacero", 
-  "Ivana Saravia", "Angi Torres", "Andres Martinez", "Cindy Suarez", "Laura Caraballo",
-  "Carlos Argort", "Gabriela Barrios", "Yanfran Sanchez", "Hecmy Perez", "Santiago Ravelo", "Corina Arce", "Evelyn La Rosa"
+"Roikel Suniaga", "Kariosqui Gomez","Carolina Rojas", "Danielis Villegas", "Kismar Hernandez", "Luisiana Nacero","Angi Torres","Cindy Suarez"
 ];
 
 const mesesNombres = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
