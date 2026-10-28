@@ -10,9 +10,12 @@ app.use(cors());
 const URL_LLAMADAS = 'https://docs.google.com/spreadsheets/d/1SRj764C3n8bk7zZH8x_HPTK-Y4AM828vKNX4TIhP3F0/export?format=csv&gid=1563288647';
 const URL_VENTAS = 'https://docs.google.com/spreadsheets/d/1PcmRLaA3jh0JoZWbiZtAtw_7wLj4IYFyxDHoCoTzZQA/export?format=csv&gid=1205148090';
 
+// Lista completa alineada con los asesores activos de la tabla dinámica
 const asesoresLista = [
-  "Berenice Troconiz", "Alejandra Mujica", "Roikel Suniaga", "Kariosqui Gomez", "Carolina Rojas", "Danielis Villegas",
-  "Kismar Hernandez", "Luisiana Nacero", "Ivana Saravia", "Angi Torres", "Andres Martinez", "Cindy Suarez", "Laura Caraballo"
+  "Berenice Troconiz", "Alejandra Mujica", "Roikel Suniaga", "Kariosqui Gomez", 
+  "Carolina Rojas", "Danielis Villegas", "Kismar Hernandez", "Luisiana Nacero", 
+  "Ivana Saravia", "Angi Torres", "Andres Martinez", "Cindy Suarez", "Laura Caraballo",
+  "Carlos Argort", "Gabriela Barrios", "Yanfran Sanchez", "Hecmy Perez", "Santiago Ravelo", "Corina Arce", "Evelyn La Rosa"
 ];
 
 const mesesNombres = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
@@ -95,7 +98,12 @@ app.get('/api/ranking', async (req, res) => {
         if (mesDetectado !== mesFiltro) return;
 
         const nombre = (row['full_name'] || row['Full Name'] || row['Asesor'] || row['Nombre'] || '')?.trim();
-        if (metricas[nombre]) {
+        
+        // Si el asesor viene en el CSV pero no está en la lista estática, lo inicializamos dinámicamente
+        if (nombre) {
+          if (!metricas[nombre]) {
+            metricas[nombre] = { nombre: nombre, llamadas: 0, contactosEfectivos: 0, ventasTotales: 0, ventasCobradas: 0 };
+          }
           metricas[nombre].llamadas += Number(row['Registro Unico'] || row['Registro Único'] || 1);
           const tipoContacto = (row['Tipo de Contacto'] || row['Contacto'] || '').toString().trim().toLowerCase();
           if (tipoContacto === 'efectivo') {
@@ -127,7 +135,12 @@ app.get('/api/ranking', async (req, res) => {
 
         const nombreAsesor = (row['Asesor'] || row['Nombre del Asesor'] || (keysVentas[22] ? row[keysVentas[22]] : ''))?.trim();
 
-        if (metricas[nombreAsesor]) {
+        if (nombreAsesor) {
+          // Inicializar dinámicamente si el asesor registra ventas pero no estaba listado arriba
+          if (!metricas[nombreAsesor]) {
+            metricas[nombreAsesor] = { nombre: nombreAsesor, llamadas: 0, contactosEfectivos: 0, ventasTotales: 0, ventasCobradas: 0 };
+          }
+
           metricas[nombreAsesor].ventasTotales += 1;
           totalVentasGeneradasGlobal += 1;
 
