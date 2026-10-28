@@ -4,85 +4,538 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ranking de Asesores - Seguros Horizonte</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-slate-950 text-slate-100 font-sans min-h-screen py-10 px-4">
-    <div class="max-w-5xl mx-auto">
-        <header class="text-center mb-10">
-            <span class="bg-blue-600/20 text-blue-400 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider">Campaña Activa</span>
-            <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight text-white mt-3">SEGUROS HORIZONTE</h1>
-            <p class="text-slate-400 text-sm mt-1">Ranking de Productividad y Conversión de Asesores</p>
-        </header>
-
-        <!-- Tarjeta del Ranking -->
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden">
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="bg-slate-800/80 text-slate-400 text-xs uppercase tracking-wider border-b border-slate-800">
-                            <th class="py-4 px-6 text-center w-16">Pos</th>
-                            <th class="py-4 px-6">Asesor</th>
-                            <th class="py-4 px-6 text-center">Llamadas</th>
-                            <th class="py-4 px-6 text-center">Contactos Efectivos</th>
-                            <th class="py-4 px-6 text-center">Ventas</th>
-                            <th class="py-4 px-6 text-right">Puntaje Global</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabla-cuerpo" class="divide-y divide-slate-800/60 text-sm">
-                        <!-- Carga dinámica -->
-                        <tr>
-                            <td colspan="6" class="py-8 text-center text-slate-500 animate-pulse">Sincronizando datos con Google Sheets...</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        <footer class="text-center mt-6 text-xs text-slate-600">
-            Actualización automática en tiempo real cada 60 segundos.
-        </footer>
-    </div>
-
-    <script>
-        async function cargarRanking() {
-            try {
-                const response = await fetch('/api/ranking');
-                const data = await response.json();
-                const tbody = document.getElementById('tabla-cuerpo');
-                tbody.innerHTML = '';
-
-                data.forEach((item, index) => {
-                    let badgeStyle = "text-slate-400 font-semibold";
-                    let rowHighlight = "hover:bg-slate-800/40";
-                    
-                    if (index === 0) {
-                        badgeStyle = "bg-yellow-500/20 text-yellow-400 font-bold border border-yellow-500/30 rounded-lg px-2 py-1";
-                        rowHighlight = "bg-yellow-500/5 hover:bg-yellow-500/10";
-                    } else if (index === 1) {
-                        badgeStyle = "bg-slate-300/20 text-slate-200 font-bold border border-slate-400/30 rounded-lg px-2 py-1";
-                    } else if (index === 2) {
-                        badgeStyle = "bg-amber-600/20 text-amber-500 font-bold border border-amber-600/30 rounded-lg px-2 py-1";
-                    }
-
-                    const tr = document.createElement('tr');
-                    tr.className = `transition ${rowHighlight}`;
-                    
-                    tr.innerHTML = `
-                        <td class="py-4 px-6 text-center"><span class="${badgeStyle}">#${index + 1}</span></td>
-                        <td class="py-4 px-6 font-medium text-white">${item.nombre}</td>
-                        <td class="py-4 px-6 text-center text-slate-300">${item.llamadas}</td>
-                        <td class="py-4 px-6 text-center text-blue-400 font-semibold">${item.contactosEfectivos}</td>
-                        <td class="py-4 px-6 text-center text-emerald-400 font-semibold">${item.ventas}</td>
-                        <td class="py-4 px-6 text-right font-bold text-amber-400 text-base">${item.puntaje} pts</td>
-                    `;
-                    tbody.appendChild(tr);
-                });
-            } catch (error) {
-                console.error("Error al cargar datos:", error);
-            }
+    <!-- Librería SheetJS para generación de archivos Excel (.xlsx) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --bg-dark: #121212;
+            --card-bg: rgba(30, 30, 30, 0.92);
+            --header-bg: rgba(37, 37, 37, 0.95);
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --accent-yellow: #ffd700;
+            --accent-blue: #0056b3;
+            --success-color: #4ade80;
+            --border-color: #333333;
+            --podium-1: rgba(54, 46, 8, 0.9);
+            --podium-2: rgba(34, 41, 51, 0.9);
+            --podium-3: rgba(45, 36, 28, 0.9);
+            --podium-4-5: rgba(26, 34, 45, 0.9);
         }
 
-        cargarRanking();
-        setInterval(cargarRanking, 60000); // Se actualiza cada 1 minuto
-    </script>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-dark);
+            background-image: linear-gradient(rgba(18, 18, 18, 0.85), rgba(18, 18, 18, 0.85)), url('logo4.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            margin: 0;
+            padding: 15px;
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+        }
+
+        .container {
+            width: 95%;
+            max-width: 1100px;
+            margin: auto;
+            background: var(--card-bg);
+            padding: 14px 20px;
+            border-radius: 10px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.7);
+            border: 1px solid var(--border-color);
+            backdrop-filter: blur(4px);
+        }
+
+        .header-title {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .header-logo {
+            height: 32px;
+            width: auto;
+            object-fit: contain;
+        }
+
+        .logo-right {
+            height: 48px;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--accent-yellow);
+            margin: 0;
+            font-size: 19px;
+            font-weight: 700;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .header-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 12px;
+            background: var(--header-bg);
+            padding: 8px 14px;
+            border-radius: 6px;
+            border-left: 4px solid var(--accent-yellow);
+            border-right: 4px solid var(--accent-blue);
+        }
+
+        .metrics-group {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .metric-item {
+            font-size: 12.5px;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .metric-item span {
+            font-weight: 700;
+            color: var(--accent-yellow);
+        }
+
+        .right-badges {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .current-month-badge {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-main);
+            background: rgba(0, 86, 179, 0.3);
+            padding: 4px 10px;
+            border-radius: 5px;
+            border: 1px solid var(--accent-blue);
+            text-transform: capitalize;
+        }
+
+        .datetime-badge {
+            font-size: 11.5px;
+            font-weight: 600;
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.06);
+            padding: 4px 10px;
+            border-radius: 5px;
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-excel {
+            background-color: #16a34a;
+            color: #ffffff;
+            border: 1px solid #15803d;
+            padding: 4px 10px;
+            border-radius: 5px;
+            font-size: 11.5px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-excel:hover {
+            background-color: #15803d;
+            box-shadow: 0 0 8px rgba(34, 197, 94, 0.4);
+        }
+
+        .table-container {
+            overflow-x: auto;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        th, td {
+            padding: 6px 10px;
+            border-bottom: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        th {
+            background-color: var(--accent-blue);
+            color: white;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 10.5px;
+            letter-spacing: 0.5px;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .rank-1 td {
+            background-color: var(--podium-1) !important;
+            font-weight: bold;
+            color: var(--accent-yellow);
+        }
+
+        .rank-2 td {
+            background-color: var(--podium-2) !important;
+            font-weight: bold;
+        }
+
+        .rank-3 td {
+            background-color: var(--podium-3) !important;
+            font-weight: bold;
+        }
+
+        .rank-top5 td {
+            background-color: var(--podium-4-5) !important;
+            font-weight: 600;
+        }
+
+        .badge-cobradas {
+            color: var(--success-color);
+            font-weight: bold;
+        }
+
+        .loading-row, .error-row {
+            text-align: center;
+            padding: 15px;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .error-row {
+            color: #f87171;
+        }
+
+        .footer-container {
+            margin-top: 12px;
+            background-color: rgba(10, 10, 10, 0.9);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 6px 10px;
+            text-align: center;
+            font-size: 10px;
+            color: #cccccc;
+            line-height: 1.3;
+        }
+
+        .footer-container p {
+            margin: 1px 0;
+        }
+
+        .gold-text {
+            color: var(--accent-yellow);
+            font-weight: bold;
+        }
+
+        .dept-title {
+            margin-top: 4px !important;
+            letter-spacing: 0.5px;
+        }
+
+        @media (max-width: 900px) {
+            body {
+                padding: 8px 4px;
+            }
+            .container {
+                width: 100%;
+                padding: 10px;
+            }
+            .header-info {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .right-badges {
+                width: 100%;
+                justify-content: space-between;
+            }
+            .logo-right {
+                height: 40px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-title">
+        <img src="logo3.png" alt="Logo Izquierdo" class="header-logo">
+        <h1>🏆 Ranking de Asesores - Seguros Horizonte</h1>
+        <img src="logo2.png" alt="Logo Derecho" class="header-logo logo-right">
+    </div>
+    
+    <div class="header-info">
+        <div class="metrics-group">
+            <div class="metric-item">
+                Meta: <span>400</span>
+            </div>
+            <div class="metric-item">
+                Ventas Generadas: <span id="totalGeneradas">0</span>
+            </div>
+            <div class="metric-item">
+                Ventas Cobradas: <span id="totalCobradas" style="color: var(--success-color);">0</span>
+            </div>
+            <div class="metric-item">
+                % Cumplimiento: <span id="porcCumplimiento" style="color: var(--accent-yellow);">0.0%</span>
+            </div>
+        </div>
+        
+        <div class="right-badges">
+            <button onclick="exportarExcel()" class="btn-excel">📥 Exportar Excel</button>
+            <div class="current-month-badge">
+                Mes Actual: <span id="nombreMesActual" style="color: var(--accent-yellow);">Cargando...</span>
+            </div>
+            <div class="datetime-badge" id="fechaHoraDisplay">
+                <!-- Fecha y hora -->
+            </div>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Puesto</th>
+                    <th>Asesor</th>
+                    <th>Llamadas</th>
+                    <th>Contactos Efectivos</th>
+                    <th>Ventas Generadas</th>
+                    <th>Ventas Cobradas</th>
+                    <th>% Conversión</th>
+                    <th>% Cobro</th>
+                </tr>
+            </thead>
+            <tbody id="tablaBody">
+                <!-- Datos cargados dinámicamente -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pie de página empresarial -->
+    <footer class="footer-container">
+        <p class="gold-text">RIF: J-504900826 &nbsp;|&nbsp; CONSORCIO BIARTE, C.A.</p>
+        <p><span class="gold-text">Dirección:</span> Av Casanova, CC El Recreo, nivel 9, of 9A, Urb El Recreo, Caracas, Distrito Capital, zona postal 1050</p>
+        <p><span class="gold-text">WhatsApp:</span> (+58) 426-5101583</p>
+        <p class="gold-text dept-title">DEPARTAMENTO DE BUSINESS INTELLIGENCE 2026</p>
+    </footer>
+</div>
+
+<script>
+    const META_PRESUPUESTO = 400;
+
+    function actualizarFechaHora() {
+        const ahora = new Date();
+        const fecha = ahora.toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        const hora = ahora.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+        
+        const display = document.getElementById('fechaHoraDisplay');
+        if (display) {
+            display.innerHTML = `📅 ${fecha} &nbsp;|&nbsp; ⏰ ${hora}`;
+        }
+    }
+
+    actualizarFechaHora();
+    setInterval(actualizarFechaHora, 1000);
+
+    async function cargarRanking() {
+        const tbody = document.getElementById('tablaBody');
+        tbody.innerHTML = `<tr><td colspan="8" class="loading-row">Cargando datos del mes en curso...</td></tr>`;
+
+        try {
+            const response = await fetch(`/api/ranking?excluirRenovaciones=true`);
+            if (!response.ok) throw new Error('Error en la respuesta del servidor');
+            
+            const resultado = await response.json();
+            
+            // Log para inspeccionar en la consola de F12 las claves exactas enviadas por la API
+            console.log("Respuesta API Ranking:", resultado);
+
+            if (!resultado.ranking || resultado.ranking.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="loading-row">No se encontraron registros para este periodo.</td></tr>`;
+                return;
+            }
+
+            // Mapeo exhaustivo para detectar ventas y renovaciones bajo distintos nombres de propiedad
+            const rankingProcesado = resultado.ranking.map(asesor => {
+                // Captura de Ventas Generadas Brutas
+                const ventasBrutas = asesor.ventasGeneradas ?? asesor.ventasTotales ?? asesor.ventas ?? 0;
+                
+                // Captura de Ventas Cobradas Brutas
+                const cobradasBrutas = asesor.ventasCobradas ?? asesor.cobradas ?? 0;
+
+                // Captura de Renovaciones (múltiples fallbacks)
+                const renovacionesGeneradas = asesor.renovaciones ?? asesor.ventasRenovacion ?? asesor.cantidadRenovaciones ?? asesor.renovacion ?? 0;
+                const renovacionesCobradas = asesor.renovacionesCobradas ?? asesor.cobradasRenovacion ?? 0;
+
+                // Cálculo Neto de Ventas (Nuevas)
+                const ventasGeneradasNets = Math.max(0, ventasBrutas - renovacionesGeneradas);
+                const ventasCobradasNets = Math.max(0, cobradasBrutas - renovacionesCobradas);
+
+                const contactosEfectivos = asesor.contactosEfectivos ?? 0;
+                const llamadas = asesor.llamadas ?? 0;
+
+                // % Conversión basado únicamente en Ventas Netas
+                let conversionVal = 0;
+                if (contactosEfectivos > 0) {
+                    conversionVal = (ventasGeneradasNets / contactosEfectivos) * 100;
+                    if (conversionVal > 100) conversionVal = 100;
+                }
+
+                // % Cobro basado únicamente en Ventas Netas
+                let cobroVal = 0;
+                if (ventasGeneradasNets > 0) {
+                    cobroVal = (ventasCobradasNets / ventasGeneradasNets) * 100;
+                }
+
+                return {
+                    ...asesor,
+                    ventasGeneradasNets,
+                    ventasCobradasNets,
+                    conversionVal,
+                    cobroVal,
+                    llamadas,
+                    contactosEfectivos
+                };
+            });
+
+            // Forzar el cálculo global sumando las ventas netas procesadas
+            const totalGeneradas = rankingProcesado.reduce((acc, curr) => acc + curr.ventasGeneradasNets, 0);
+            const totalCobradas = rankingProcesado.reduce((acc, curr) => acc + curr.ventasCobradasNets, 0);
+            const porcCumplimiento = ((totalGeneradas / META_PRESUPUESTO) * 100).toFixed(1);
+
+            // Renderizado en los contadores del Header
+            document.getElementById('totalGeneradas').innerText = totalGeneradas;
+            document.getElementById('totalCobradas').innerText = totalCobradas;
+            document.getElementById('porcCumplimiento').innerText = `${porcCumplimiento}%`;
+            document.getElementById('nombreMesActual').innerText = resultado.mesActual || '';
+
+            // Ordenamiento por % de Conversión (Mayor a Menor) y desempate por Ventas Generadas Netas
+            rankingProcesado.sort((a, b) => {
+                if (b.conversionVal !== a.conversionVal) {
+                    return b.conversionVal - a.conversionVal;
+                }
+                if (b.ventasGeneradasNets !== a.ventasGeneradasNets) {
+                    return b.ventasGeneradasNets - a.ventasGeneradasNets;
+                }
+                return b.llamadas - a.llamadas;
+            });
+
+            tbody.innerHTML = '';
+
+            rankingProcesado.forEach((asesor, index) => {
+                const tr = document.createElement('tr');
+                const puestoReal = index + 1;
+                const tieneActividad = (asesor.ventasGeneradasNets > 0 || asesor.llamadas > 0);
+                
+                let etiquetaPuesto = `#${puestoReal}`;
+                if (tieneActividad) {
+                    if (puestoReal === 1) {
+                        tr.classList.add('rank-1');
+                        etiquetaPuesto = `🏆 #${puestoReal}`;
+                    } else if (puestoReal === 2) {
+                        tr.classList.add('rank-2');
+                        etiquetaPuesto = `🥈 #${puestoReal}`;
+                    } else if (puestoReal === 3) {
+                        tr.classList.add('rank-3');
+                        etiquetaPuesto = `🥉 #${puestoReal}`;
+                    } else if (puestoReal === 4 || puestoReal === 5) {
+                        tr.classList.add('rank-top5');
+                        etiquetaPuesto = `⭐ #${puestoReal}`;
+                    }
+                }
+
+                const conversionStr = asesor.conversionVal.toFixed(1) + '%';
+                const porcCobroStr = asesor.cobroVal.toFixed(1) + '%';
+
+                tr.innerHTML = `
+                    <td><strong>${etiquetaPuesto}</strong></td>
+                    <td>${asesor.nombre}</td>
+                    <td>${asesor.llamadas}</td>
+                    <td>${asesor.contactosEfectivos}</td>
+                    <td>${asesor.ventasGeneradasNets}</td>
+                    <td><span class="badge-cobradas">${asesor.ventasCobradasNets}</span></td>
+                    <td>${conversionStr}</td>
+                    <td>${porcCobroStr}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } catch (error) {
+            tbody.innerHTML = `<tr><td colspan="8" class="error-row">Error al cargar el ranking. Por favor, intente nuevamente.</td></tr>`;
+            console.error('Error:', error);
+        }
+    }
+
+    function exportarExcel() {
+        const mes = document.getElementById('nombreMesActual').innerText || 'Mes_Actual';
+        const generadas = document.getElementById('totalGeneradas').innerText;
+        const cobradas = document.getElementById('totalCobradas').innerText;
+        const cumplimiento = document.getElementById('porcCumplimiento').innerText;
+        const fechaReporte = new Date().toLocaleDateString('es-VE');
+
+        const datosExcel = [
+            ["REPORTE DE RANKING DE ASESORES (EXCLUYENDO RENOVACIONES) - SEGUROS HORIZONTE"],
+            ["Fecha de Descarga:", fechaReporte, "Mes Evaluado:", mes],
+            [],
+            ["INDICADORES GENERALES"],
+            ["Meta de Presupuesto", "Ventas Generadas (Nuevas)", "Ventas Cobradas (Nuevas)", "% Cumplimiento"],
+            [META_PRESUPUESTO, parseInt(generadas), parseInt(cobradas), cumplimiento],
+            [],
+            ["DETALLE DE RANKING POR ASESOR"],
+            ["Puesto", "Asesor", "Llamadas", "Contactos Efectivos", "Ventas Generadas", "Ventas Cobradas", "% Conversión", "% Cobro"]
+        ];
+
+        const filasTabla = document.querySelectorAll('#tablaBody tr');
+        filasTabla.forEach(row => {
+            const cols = row.querySelectorAll('td');
+            if (cols.length >= 8) {
+                datosExcel.push([
+                    cols[0].innerText.replace(/[^\d#]/g, ''),
+                    cols[1].innerText,
+                    parseInt(cols[2].innerText) || 0,
+                    parseInt(cols[3].innerText) || 0,
+                    parseInt(cols[4].innerText) || 0,
+                    parseInt(cols[5].innerText) || 0,
+                    cols[6].innerText,
+                    cols[7].innerText
+                ]);
+            }
+        });
+
+        const ws = XLSX.utils.aoa_to_sheet(datosExcel);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Ranking");
+
+        XLSX.writeFile(wb, `Ranking_Asesores_Nuevas_${mes.replace(/\s+/g, '_')}.xlsx`);
+    }
+
+    cargarRanking();
+</script>
+
 </body>
 </html>
