@@ -130,8 +130,6 @@ app.get('/api/ranking', async (req, res) => {
 
         let valorStatusCobro = '';
         let valorParentesco = '';
-
-        // Inspeccionar todas las columnas de la fila dinámicamente
         const valoresFila = Object.values(row).map(v => String(v || '').trim().toLowerCase());
         const textoFilaCompleta = valoresFila.join(' ');
 
@@ -139,7 +137,7 @@ app.get('/api/ranking', async (req, res) => {
           const kClean = key.toLowerCase().trim();
           const valStr = String(value || '').trim().toLowerCase();
           
-          if (kClean.includes('status de cobro') || kClean.includes('estatus de cobro') || kClean.includes('ae')) {
+          if (kClean.includes('status de cobro') || kClean.includes('estatus de cobro')) {
             if (valStr) valorStatusCobro = valStr;
           }
           if (kClean.includes('parentesco')) {
@@ -147,20 +145,13 @@ app.get('/api/ranking', async (req, res) => {
           }
         }
 
-        // Si por alguna razón la clave exacta no hizo match, buscamos valores en el array keys por posición aproximada
-        if (!valorStatusCobro) {
-          const keysArr = Object.keys(row);
-          // Columna AE suele estar alrededor del índice 30
-          if (keysArr[30] && row[keysArr[30]]) {
-            valorStatusCobro = String(row[keysArr[30]]).trim().toLowerCase();
-          }
-        }
-
         const colMesVentas = (row['Mes'] || row['mes'] || '').toString().trim().toLowerCase();
         const marcaTemporal = row['Marca temporal'] || row['Fecha'] || (Object.keys(row)[0] ? row[Object.keys(row)[0]] : '');
         const mesDetectadoVentas = colMesVentas || extraerMesDeFecha(marcaTemporal);
 
-        if (mesDetectadoVentas !== mesFiltro && !mesDetectadoVentas.includes(mesPrefijo)) return;
+        // Validar que la venta pertenezca estrictamente a noviembre
+        const esMesNoviembre = mesDetectadoVentas === mesFiltro || mesDetectadoVentas.includes(mesPrefijo);
+        if (!esMesNoviembre) return;
 
         // Filtro de Parentesco (titular masculino / femenino)
         if (!valorParentesco.includes('titular')) return;
@@ -176,8 +167,9 @@ app.get('/api/ranking', async (req, res) => {
           metricas[asesorValido].ventasTotales += 1;
           totalVentasGeneradasGlobal += 1;
 
-          // Verificación amplia y directa: si el estatus o cualquier parte de la celda contiene 'noviembre' o 'nov'
-          const estaCobrada = (valorStatusCobro.includes('noviembre') || valorStatusCobro.includes('nov') || textoFilaCompleta.includes('noviembre')) && 
+          // Una venta es cobrada si su estatus de cobro es NOVIEMBRE o contiene nov
+          const estaCobrada = valorStatusCobro.length > 0 && 
+                              (valorStatusCobro.includes('noviembre') || valorStatusCobro.includes('nov')) && 
                               !valorStatusCobro.includes('pendiente') && 
                               !valorStatusCobro.includes('no');
 
