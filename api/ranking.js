@@ -12,7 +12,8 @@ const URL_VENTAS = 'https://docs.google.com/spreadsheets/d/1PcmRLaA3jh0JoZWbiZtA
 
 const asesoresLista = [
   "Roikel Suniaga", "Kariosqui Gomez", "Carolina Rojas", "Danielis Villegas",
-  "Kismar Hernandez", "Cindy Suarez","Krisbel Ramos","Oriana Aponte","Keisy Plaza","Yerlis Vasquez","Nallely Regifo","Omar Mesia"
+  "Kismar Hernandez", "Cindy Suarez", "Krisbel Ramos", "Oriana Aponte", 
+  "Keisy Plaza", "Yerlis Vasquez", "Nallely Regifo", "Omar Mesia"
 ];
 
 const mesesNombres = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
@@ -65,6 +66,7 @@ app.get('/api/ranking', async (req, res) => {
   try {
     const mesActualCalculado = mesesNombres[new Date().getMonth()];
     const mesFiltro = (req.query.mes || mesActualCalculado || 'noviembre').toLowerCase().trim();
+    const mesPrefijo = mesFiltro.slice(0, 3);
 
     const [datosLlamadas, datosVentas] = await Promise.all([
       leerCSVdesdeURL(URL_LLAMADAS),
@@ -82,6 +84,17 @@ app.get('/api/ranking', async (req, res) => {
       };
     });
 
+    const buscarAsesorCoincidente = (nombreCrudo) => {
+      if (!nombreCrudo) return null;
+      const limpio = String(nombreCrudo).trim().toLowerCase();
+      for (const asesor of asesoresLista) {
+        if (asesor.toLowerCase() === limpio || limpio.includes(asesor.toLowerCase())) {
+          return asesor;
+        }
+      }
+      return null;
+    };
+
     // 1. Procesar llamadas
     if (Array.isArray(datosLlamadas)) {
       datosLlamadas.forEach(row => {
@@ -92,14 +105,16 @@ app.get('/api/ranking', async (req, res) => {
         const fechaGestion = row['Fecha'] || row['Marca temporal'] || row['Timestamp'] || (keys[0] ? row[keys[0]] : '');
         const mesDetectado = colMesExplicit || extraerMesDeFecha(fechaGestion);
 
-        if (mesDetectado !== mesFiltro) return;
+        if (mesDetectado !== mesFiltro && !mesDetectado.includes(mesPrefijo)) return;
 
-        const nombre = (row['full_name'] || row['Full Name'] || row['Asesor'] || row['Nombre'] || '')?.trim();
-        if (metricas[nombre]) {
-          metricas[nombre].llamadas += Number(row['Registro Unico'] || row['Registro Único'] || 1);
+        const nombreCrudo = row['full_name'] || row['Full Name'] || row['Asesor'] || row['Nombre'] || '';
+        const asesorValido = buscarAsesorCoincidente(nombreCrudo);
+
+        if (asesorValido && metricas[asesorValido]) {
+          metricas[asesorValido].llamadas += Number(row['Registro Unico'] || row['Registro Único'] || 1);
           const tipoContacto = (row['Tipo de Contacto'] || row['Contacto'] || '').toString().trim().toLowerCase();
           if (tipoContacto === 'efectivo') {
-            metricas[nombre].contactosEfectivos += 1;
+            metricas[asesorValido].contactosEfectivos += 1;
           }
         }
       });
@@ -118,23 +133,21 @@ app.get('/api/ranking', async (req, res) => {
         const marcaTemporal = row['Marca temporal'] || row['Fecha'] || (keysVentas[0] ? row[keysVentas[0]] : '');
         const mesDetectadoVentas = colMesVentas || extraerMesDeFecha(marcaTemporal);
 
-        if (mesDetectadoVentas !== mesFiltro) return;
-
-        const parentesco = (row['Parentesco'] || '').toString().trim();
-        if (parentesco !== 'Titular Masculino' && parentesco !== 'Titular Femenino') return;
+        if (mesDetectadoVentas !== mesFiltro && !mesDetectadoVentas.includes(mesPrefijo)) return;
 
         // Exclusión de renovaciones
         const filaTexto = JSON.stringify(row).toLowerCase();
         const esRenovacion = /\breno\b|renov/i.test(filaTexto);
         if (esRenovacion) return;
 
-        const nombreAsesor = (row['Asesor'] || row['Nombre del Asesor'] || (keysVentas[22] ? row[keysVentas[22]] : ''))?.trim();
+        const nombreCrudo = row['Asesor'] || row['Nombre del Asesor'] || (keysVentas[22] ? row[keysVentas[22]] : '');
+        const asesorValido = buscarAsesorCoincidente(nombreCrudo);
 
-        if (metricas[nombreAsesor]) {
-          metricas[nombreAsesor].ventasTotales += 1;
+        if (asesorValido && metricas[asesorValido]) {
+          metricas[asesorValido].ventasTotales += 1;
           totalVentasGeneradasGlobal += 1;
 
-          // Columna AE ("status de cobro")
+          // Búsqueda en Columna AE ("status de cobro" / Índice 30)
           let valorStatusCobro = '';
           for (let i = 0; i < keysVentas.length; i++) {
             const kClean = keysVentas[i].toLowerCase().trim();
@@ -144,12 +157,12 @@ app.get('/api/ranking', async (req, res) => {
             }
           }
 
-          const estaCobrada = valorStatusCobro.includes(mesFiltro) && 
+          const estaCobrada = (valorStatusCobro.includes(mesFiltro) || valorStatusCobro.includes(mesPrefijo)) && 
                               !valorStatusCobro.includes('pendiente') && 
                               !valorStatusCobro.includes('no');
 
           if (estaCobrada) {
-            metricas[nombreAsesor].ventasCobradas += 1;
+            metricas[asesorValido].ventasCobradas += 1;
             totalVentasCobradasGlobal += 1;
           }
         }
