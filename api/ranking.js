@@ -128,17 +128,31 @@ app.get('/api/ranking', async (req, res) => {
       datosVentas.forEach(row => {
         if (!row) return;
 
-        // Búsqueda exhaustiva y tolerante de la columna status de cobro y parentesco
         let valorStatusCobro = '';
         let valorParentesco = '';
 
+        // Inspeccionar todas las columnas de la fila dinámicamente
+        const valoresFila = Object.values(row).map(v => String(v || '').trim().toLowerCase());
+        const textoFilaCompleta = valoresFila.join(' ');
+
         for (const [key, value] of Object.entries(row)) {
           const kClean = key.toLowerCase().trim();
-          if (kClean.includes('status de cobro') || kClean.includes('estatus de cobro')) {
-            valorStatusCobro = String(value || '').trim().toLowerCase();
+          const valStr = String(value || '').trim().toLowerCase();
+          
+          if (kClean.includes('status de cobro') || kClean.includes('estatus de cobro') || kClean.includes('ae')) {
+            if (valStr) valorStatusCobro = valStr;
           }
           if (kClean.includes('parentesco')) {
-            valorParentesco = String(value || '').trim().toLowerCase();
+            valorParentesco = valStr;
+          }
+        }
+
+        // Si por alguna razón la clave exacta no hizo match, buscamos valores en el array keys por posición aproximada
+        if (!valorStatusCobro) {
+          const keysArr = Object.keys(row);
+          // Columna AE suele estar alrededor del índice 30
+          if (keysArr[30] && row[keysArr[30]]) {
+            valorStatusCobro = String(row[keysArr[30]]).trim().toLowerCase();
           }
         }
 
@@ -152,8 +166,7 @@ app.get('/api/ranking', async (req, res) => {
         if (!valorParentesco.includes('titular')) return;
 
         // Exclusión de renovaciones
-        const filaTexto = JSON.stringify(row).toLowerCase();
-        if (/\breno\b|renov/i.test(filaTexto)) return;
+        if (/\breno\b|renov/i.test(textoFilaCompleta)) return;
 
         const keysVentas = Object.keys(row);
         const nombreCrudo = row['Asesor'] || row['Nombre del Asesor'] || (keysVentas[22] ? row[keysVentas[22]] : '');
@@ -163,9 +176,8 @@ app.get('/api/ranking', async (req, res) => {
           metricas[asesorValido].ventasTotales += 1;
           totalVentasGeneradasGlobal += 1;
 
-          // Verificación robusta: si el estatus contiene "noviembre", "nov" o texto de cobro exitoso
-          const estaCobrada = valorStatusCobro.length > 0 && 
-                              (valorStatusCobro.includes('noviembre') || valorStatusCobro.includes('nov') || valorStatusCobro.includes(mesFiltro)) && 
+          // Verificación amplia y directa: si el estatus o cualquier parte de la celda contiene 'noviembre' o 'nov'
+          const estaCobrada = (valorStatusCobro.includes('noviembre') || valorStatusCobro.includes('nov') || textoFilaCompleta.includes('noviembre')) && 
                               !valorStatusCobro.includes('pendiente') && 
                               !valorStatusCobro.includes('no');
 
