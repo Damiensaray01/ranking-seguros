@@ -127,22 +127,18 @@ app.get('/api/ranking', async (req, res) => {
     if (Array.isArray(datosVentas)) {
       datosVentas.forEach(row => {
         if (!row) return;
-        
-        // Buscar la llave exacta de la columna sin importar mayúsculas/minúsculas o espacios
-        let valorStatusCobro = '';
-        for (const key of Object.keys(row)) {
-          const kClean = key.toLowerCase().trim();
-          if (kClean === 'status de cobro' || kClean === 'estatus de cobro') {
-            valorStatusCobro = String(row[key] || '').trim().toLowerCase();
-            break;
-          }
-        }
 
-        // Si no encontró por nombre, probamos por el índice aproximado de la columna AE
-        if (!valorStatusCobro) {
-          const keysArr = Object.keys(row);
-          if (keysArr[30]) {
-            valorStatusCobro = String(row[keysArr[30]] || '').trim().toLowerCase();
+        // Búsqueda inteligente de columnas sin importar variaciones o mayúsculas
+        let valorStatusCobro = '';
+        let valorParentesco = '';
+
+        for (const [key, value] of Object.entries(row)) {
+          const kClean = key.toLowerCase().trim();
+          if (kClean.includes('status de cobro') || kClean.includes('estatus de cobro')) {
+            valorStatusCobro = String(value || '').trim().toLowerCase();
+          }
+          if (kClean.includes('parentesco')) {
+            valorParentesco = String(value || '').trim().toLowerCase();
           }
         }
 
@@ -152,14 +148,12 @@ app.get('/api/ranking', async (req, res) => {
 
         if (mesDetectadoVentas !== mesFiltro && !mesDetectadoVentas.includes(mesPrefijo)) return;
 
-        // Filtro estricto de Parentesco
-        const parentesco = (row['Parentesco'] || '').toString().trim().toLowerCase();
-        if (parentesco !== 'titular masculino' && parentesco !== 'titular femenino') return;
+        // Filtro flexible de Parentesco (titular masculino / femenino)
+        if (!valorParentesco.includes('titular')) return;
 
-        // Exclusión de renovaciones
+        // Exklusión de renovaciones
         const filaTexto = JSON.stringify(row).toLowerCase();
-        const esRenovacion = /\breno\b|renov/i.test(filaTexto);
-        if (esRenovacion) return;
+        if (/\breno\b|renov/i.test(filaTexto)) return;
 
         const keysVentas = Object.keys(row);
         const nombreCrudo = row['Asesor'] || row['Nombre del Asesor'] || (keysVentas[22] ? row[keysVentas[22]] : '');
@@ -169,8 +163,8 @@ app.get('/api/ranking', async (req, res) => {
           metricas[asesorValido].ventasTotales += 1;
           totalVentasGeneradasGlobal += 1;
 
-          // Valida si el estatus de cobro contiene el mes actual (ej. 'noviembre')
-          const estaCobrada = (valorStatusCobro.includes(mesFiltro) || valorStatusCobro.includes(mesPrefijo) || valorStatusCobro.includes('noviembre')) && 
+          // Valida si el estatus de cobro es noviembre (o contiene texto de cobro exitoso)
+          const estaCobrada = (valorStatusCobro.includes('noviembre') || valorStatusCobro.includes('nov') || valorStatusCobro.includes(mesFiltro)) && 
                               !valorStatusCobro.includes('pendiente') && 
                               !valorStatusCobro.includes('no');
 
