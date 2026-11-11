@@ -128,7 +128,7 @@ app.get('/api/ranking', async (req, res) => {
       datosVentas.forEach(row => {
         if (!row) return;
 
-        // Búsqueda inteligente de columnas sin importar variaciones o mayúsculas
+        // Búsqueda exhaustiva y tolerante de la columna status de cobro y parentesco
         let valorStatusCobro = '';
         let valorParentesco = '';
 
@@ -148,10 +148,10 @@ app.get('/api/ranking', async (req, res) => {
 
         if (mesDetectadoVentas !== mesFiltro && !mesDetectadoVentas.includes(mesPrefijo)) return;
 
-        // Filtro flexible de Parentesco (titular masculino / femenino)
+        // Filtro de Parentesco (titular masculino / femenino)
         if (!valorParentesco.includes('titular')) return;
 
-        // Exklusión de renovaciones
+        // Exclusión de renovaciones
         const filaTexto = JSON.stringify(row).toLowerCase();
         if (/\breno\b|renov/i.test(filaTexto)) return;
 
@@ -163,8 +163,9 @@ app.get('/api/ranking', async (req, res) => {
           metricas[asesorValido].ventasTotales += 1;
           totalVentasGeneradasGlobal += 1;
 
-          // Valida si el estatus de cobro es noviembre (o contiene texto de cobro exitoso)
-          const estaCobrada = (valorStatusCobro.includes('noviembre') || valorStatusCobro.includes('nov') || valorStatusCobro.includes(mesFiltro)) && 
+          // Verificación robusta: si el estatus contiene "noviembre", "nov" o texto de cobro exitoso
+          const estaCobrada = valorStatusCobro.length > 0 && 
+                              (valorStatusCobro.includes('noviembre') || valorStatusCobro.includes('nov') || valorStatusCobro.includes(mesFiltro)) && 
                               !valorStatusCobro.includes('pendiente') && 
                               !valorStatusCobro.includes('no');
 
