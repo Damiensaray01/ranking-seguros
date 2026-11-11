@@ -135,6 +135,10 @@ app.get('/api/ranking', async (req, res) => {
 
         if (mesDetectadoVentas !== mesFiltro && !mesDetectadoVentas.includes(mesPrefijo)) return;
 
+        // Filtro estricto de Parentesco
+        const parentesco = (row['Parentesco'] || '').toString().trim().toLowerCase();
+        if (parentesco !== 'titular masculino' && parentesco !== 'titular femenino') return;
+
         // Exclusión de renovaciones
         const filaTexto = JSON.stringify(row).toLowerCase();
         const esRenovacion = /\breno\b|renov/i.test(filaTexto);
@@ -147,7 +151,7 @@ app.get('/api/ranking', async (req, res) => {
           metricas[asesorValido].ventasTotales += 1;
           totalVentasGeneradasGlobal += 1;
 
-          // Búsqueda en Columna AE ("status de cobro" / Índice 30)
+          // Búsqueda flexible en Columna AE ("status de cobro" / Índice 30)
           let valorStatusCobro = '';
           for (let i = 0; i < keysVentas.length; i++) {
             const kClean = keysVentas[i].toLowerCase().trim();
@@ -157,7 +161,8 @@ app.get('/api/ranking', async (req, res) => {
             }
           }
 
-          const estaCobrada = (valorStatusCobro.includes(mesFiltro) || valorStatusCobro.includes(mesPrefijo)) && 
+          // Acepta coincidencia si el estatus contiene el mes, el prefijo o la palabra "noviembre" explícita
+          const estaCobrada = (valorStatusCobro.includes(mesFiltro) || valorStatusCobro.includes(mesPrefijo) || valorStatusCobro.includes('noviembre')) && 
                               !valorStatusCobro.includes('pendiente') && 
                               !valorStatusCobro.includes('no');
 
