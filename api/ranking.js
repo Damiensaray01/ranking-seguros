@@ -149,8 +149,8 @@ app.get('/api/ranking', async (req, res) => {
         const marcaTemporal = row['Marca temporal'] || row['Fecha'] || (Object.keys(row)[0] ? row[Object.keys(row)[0]] : '');
         const mesDetectadoVentas = colMesVentas || extraerMesDeFecha(marcaTemporal);
 
-        // Validar que la venta pertenezca estrictamente a noviembre
-        const esMesNoviembre = mesDetectadoVentas === mesFiltro || mesDetectadoVentas.includes(mesPrefijo);
+        // Validar que pertenezca al mes (o que el estatus de cobro corresponda a noviembre)
+        const esMesNoviembre = mesDetectadoVentas === mesFiltro || mesDetectadoVentas.includes(mesPrefijo) || valorStatusCobro.includes('noviembre');
         if (!esMesNoviembre) return;
 
         // Filtro de Parentesco (titular masculino / femenino)
@@ -167,7 +167,7 @@ app.get('/api/ranking', async (req, res) => {
           metricas[asesorValido].ventasTotales += 1;
           totalVentasGeneradasGlobal += 1;
 
-          // Una venta es cobrada si su estatus de cobro es NOVIEMBRE o contiene nov
+          // Contar como cobrada si el estatus de cobro indica claramente noviembre
           const estaCobrada = valorStatusCobro.length > 0 && 
                               (valorStatusCobro.includes('noviembre') || valorStatusCobro.includes('nov')) && 
                               !valorStatusCobro.includes('pendiente') && 
