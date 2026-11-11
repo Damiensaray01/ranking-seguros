@@ -12,7 +12,7 @@ const URL_VENTAS = 'https://docs.google.com/spreadsheets/d/1PcmRLaA3jh0JoZWbiZtA
 
 const asesoresLista = [
   "Roikel Suniaga", "Kariosqui Gomez", "Carolina Rojas", "Danielis Villegas",
-  "Kismar Hernandez", "Luisiana Nacero", "Angi Torres", "Cindy Suarez","Krisbel Ramos","Oriana Aponte","Keisy Plaza","Yerlis Vasquez","Nallely Regifo","Omar Mesia"
+  "Kismar Hernandez", "Cindy Suarez","Krisbel Ramos","Oriana Aponte","Keisy Plaza","Yerlis Vasquez","Nallely Regifo","Omar Mesia"
 ];
 
 const mesesNombres = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
