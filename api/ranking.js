@@ -64,7 +64,7 @@ function extraerMesDeFecha(texto) {
 app.get('/api/ranking', async (req, res) => {
   try {
     const mesActualCalculado = mesesNombres[new Date().getMonth()];
-    const mesFiltro = (req.query.mes || mesActualCalculado || 'octubre').toLowerCase().trim();
+    const mesFiltro = (req.query.mes || mesActualCalculado || 'noviembre').toLowerCase().trim();
 
     const [datosLlamadas, datosVentas] = await Promise.all([
       leerCSVdesdeURL(URL_LLAMADAS),
