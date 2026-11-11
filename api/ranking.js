@@ -127,10 +127,27 @@ app.get('/api/ranking', async (req, res) => {
     if (Array.isArray(datosVentas)) {
       datosVentas.forEach(row => {
         if (!row) return;
-        const keysVentas = Object.keys(row);
         
+        // Buscar la llave exacta de la columna sin importar mayúsculas/minúsculas o espacios
+        let valorStatusCobro = '';
+        for (const key of Object.keys(row)) {
+          const kClean = key.toLowerCase().trim();
+          if (kClean === 'status de cobro' || kClean === 'estatus de cobro') {
+            valorStatusCobro = String(row[key] || '').trim().toLowerCase();
+            break;
+          }
+        }
+
+        // Si no encontró por nombre, probamos por el índice aproximado de la columna AE
+        if (!valorStatusCobro) {
+          const keysArr = Object.keys(row);
+          if (keysArr[30]) {
+            valorStatusCobro = String(row[keysArr[30]] || '').trim().toLowerCase();
+          }
+        }
+
         const colMesVentas = (row['Mes'] || row['mes'] || '').toString().trim().toLowerCase();
-        const marcaTemporal = row['Marca temporal'] || row['Fecha'] || (keysVentas[0] ? row[keysVentas[0]] : '');
+        const marcaTemporal = row['Marca temporal'] || row['Fecha'] || (Object.keys(row)[0] ? row[Object.keys(row)[0]] : '');
         const mesDetectadoVentas = colMesVentas || extraerMesDeFecha(marcaTemporal);
 
         if (mesDetectadoVentas !== mesFiltro && !mesDetectadoVentas.includes(mesPrefijo)) return;
@@ -144,6 +161,7 @@ app.get('/api/ranking', async (req, res) => {
         const esRenovacion = /\breno\b|renov/i.test(filaTexto);
         if (esRenovacion) return;
 
+        const keysVentas = Object.keys(row);
         const nombreCrudo = row['Asesor'] || row['Nombre del Asesor'] || (keysVentas[22] ? row[keysVentas[22]] : '');
         const asesorValido = buscarAsesorCoincidente(nombreCrudo);
 
@@ -151,17 +169,7 @@ app.get('/api/ranking', async (req, res) => {
           metricas[asesorValido].ventasTotales += 1;
           totalVentasGeneradasGlobal += 1;
 
-          // Búsqueda flexible en Columna AE ("status de cobro" / Índice 30)
-          let valorStatusCobro = '';
-          for (let i = 0; i < keysVentas.length; i++) {
-            const kClean = keysVentas[i].toLowerCase().trim();
-            if (kClean === 'status de cobro' || kClean === 'estatus de cobro' || i === 30) {
-              const val = String(row[keysVentas[i]] || '').trim().toLowerCase();
-              if (val) valorStatusCobro = val;
-            }
-          }
-
-          // Acepta coincidencia si el estatus contiene el mes, el prefijo o la palabra "noviembre" explícita
+          // Valida si el estatus de cobro contiene el mes actual (ej. 'noviembre')
           const estaCobrada = (valorStatusCobro.includes(mesFiltro) || valorStatusCobro.includes(mesPrefijo) || valorStatusCobro.includes('noviembre')) && 
                               !valorStatusCobro.includes('pendiente') && 
                               !valorStatusCobro.includes('no');
